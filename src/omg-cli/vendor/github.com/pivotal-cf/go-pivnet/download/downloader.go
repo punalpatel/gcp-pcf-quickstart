@@ -11,6 +11,9 @@ import (
 	"strings"
 	"syscall"
 	"github.com/shirou/gopsutil/disk"
+	"github.com/onsi/gomega/gbytes"
+	"time"
+	"path"
 )
 
 //go:generate counterfeiter -o ./fakes/ranger.go --fake-name Ranger . ranger
@@ -42,6 +45,7 @@ type Client struct {
 	Ranger     ranger
 	Bar        bar
 	Logger     logger.Logger
+	Timeout    time.Duration
 }
 
 func (c Client) Get(
@@ -66,6 +70,8 @@ func (c Client) Get(
 		return fmt.Errorf("failed to make HEAD request: %s", err)
 	}
 
+	c.Logger.Debug(fmt.Sprintf("HEAD response content size: %d", resp.ContentLength))
+
 	contentURL = resp.Request.URL.String()
 
 	ranges, err := c.Ranger.BuildRange(resp.ContentLength)
@@ -73,13 +79,13 @@ func (c Client) Get(
 		return fmt.Errorf("failed to construct range: %s", err)
 	}
 
-	diskStats, err := disk.Usage(location.Name())
+	diskStats, err := disk.Usage(path.Dir(location.Name()))
 	if err != nil {
 		return fmt.Errorf("failed to get disk free space: %s", err)
 	}
 
 	if diskStats.Free < uint64(resp.ContentLength) {
-		return fmt.Errorf("file is too big to fit on this drive")
+		return fmt.Errorf("file is too big to fit on this drive: %d bytes required, %d bytes free", uint64(resp.ContentLength), diskStats.Free)
 	}
 
 	c.Bar.SetOutput(progressWriter)
@@ -102,7 +108,7 @@ func (c Client) Get(
 		}
 
 		g.Go(func() error {
-			err := c.retryableRequest(contentURL, byteRange.HTTPHeader, fileWriter, byteRange.Lower, downloadLinkFetcher)
+			err := c.retryableRequest(contentURL, byteRange.HTTPHeader, fileWriter, byteRange.Lower, downloadLinkFetcher, c.Timeout)
 			if err != nil {
 				return fmt.Errorf("failed during retryable request: %s", err)
 			}
@@ -118,7 +124,7 @@ func (c Client) Get(
 	return nil
 }
 
-func (c Client) retryableRequest(contentURL string, rangeHeader http.Header, fileWriter *os.File, startingByte int64, downloadLinkFetcher downloadLinkFetcher) error {
+func (c Client) retryableRequest(contentURL string, rangeHeader http.Header, fileWriter *os.File, startingByte int64, downloadLinkFetcher downloadLinkFetcher, timeout time.Duration) error {
 	currentURL := contentURL
 	defer fileWriter.Close()
 
@@ -168,9 +174,14 @@ Retry:
 	var proxyReader io.Reader
 	proxyReader = c.Bar.NewProxyReader(resp.Body)
 
-	bytesWritten, err := io.Copy(fileWriter, proxyReader)
+
+	var timeoutReader io.Reader
+	timeoutReader = gbytes.TimeoutReader(proxyReader, timeout)
+
+	bytesWritten, err := io.Copy(fileWriter, timeoutReader)
 	if err != nil {
-		if err == io.ErrUnexpectedEOF {
+		if err == io.ErrUnexpectedEOF || err == gbytes.ErrTimeout{
+			c.Logger.Debug(fmt.Sprintf("retrying %v", err))
 			c.Bar.Add(int(-1 * bytesWritten))
 			goto Retry
 		}

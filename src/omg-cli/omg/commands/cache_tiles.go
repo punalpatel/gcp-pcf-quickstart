@@ -63,7 +63,6 @@ func (cmd *CacheTilesCommand) run(c *kingpin.ParseContext) error {
 		return fmt.Errorf("finding tile cache directory %s: %v", cmd.tileCacheDir, err)
 	}
 
-	tileCache := pivnet.TileCache{cmd.tileCacheDir}
 	tiles := selectedTiles(cmd.logger, envCfg)
 	for _, tile := range tiles {
 		if tile.BuiltIn() {
@@ -72,7 +71,7 @@ func (cmd *CacheTilesCommand) run(c *kingpin.ParseContext) error {
 		definition := tile.Definition(&config.EnvConfig{SmallFootprint: true})
 		cmd.logger.Printf("caching tile: %s", definition.Product.Name)
 
-		output := filepath.Join(cmd.tileCacheDir, tileCache.FileName(definition.Pivnet))
+		output := filepath.Join(cmd.tileCacheDir, pivnet.FileName(definition.Pivnet))
 		file, err := pivnetSdk.DownloadTileToPath(definition.Pivnet, output)
 		if err != nil {
 			return fmt.Errorf("downloading tile: %v", err)

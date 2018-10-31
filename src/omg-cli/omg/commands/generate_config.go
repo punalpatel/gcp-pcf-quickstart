@@ -32,6 +32,7 @@ import (
 	"github.com/alecthomas/kingpin"
 	googleauth "golang.org/x/oauth2/google"
 	compute "google.golang.org/api/compute/v1"
+	"time"
 )
 
 type GenerateConfigCommand struct {
@@ -61,6 +62,7 @@ func (cmd *GenerateConfigCommand) run(c *kingpin.ParseContext) error {
 	}
 
 	gcpClient, err := googleauth.DefaultClient(context.Background(), compute.CloudPlatformScope)
+	gcpClient.Timeout = time.Minute
 	if err != nil {
 		cmd.logger.Fatalf("loading application default credentials: %v.\nHave you ran `gcloud auth application-default login`?", err)
 	}

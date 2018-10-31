@@ -20,7 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"omg-cli/config"
-	"omg-cli/omg/tiles"
+	tiles "omg-cli/omg/tiles/tilestructs"
 	"omg-cli/ops_manager"
 )
 
@@ -88,7 +88,7 @@ type LargeFootprintResources struct {
 	NfsServer                    tiles.Resource `json:"nfs_server"`
 	MysqlProxy                   tiles.Resource `json:"mysql_proxy"`
 	Mysql                        tiles.Resource `json:"mysql"`
-	BackupPrepare                tiles.Resource `json:"backup-prepare"`
+	BackupPrepare                tiles.Resource `json:"backup_restore"`
 	DiegoDatabase                tiles.Resource `json:"diego_database"`
 	Uaa                          tiles.Resource `json:"uaa"`
 	CloudController              tiles.Resource `json:"cloud_controller"`
@@ -113,7 +113,7 @@ type SmallFootprintResources struct {
 	FileStorage tiles.Resource `json:"blobstore"`
 
 	HaProxy       tiles.Resource `json:"ha_proxy"`
-	BackupPrepare tiles.Resource `json:"backup-prepare"`
+	BackupPrepare tiles.Resource `json:"backup_restore"`
 	MysqlMonitor  tiles.Resource `json:"mysql_monitor"`
 }
 
@@ -130,17 +130,17 @@ func (*Tile) Configure(envConfig *config.EnvConfig, cfg *config.Config, om *ops_
 	}
 
 	properties := Properties{
-		AppsDomain:          tiles.Value{cfg.AppsDomain},
-		SysDomain:           tiles.Value{cfg.SysDomain},
-		SkipSSLVerification: tiles.BooleanValue{true},
-		HAProxyForwardTLS:   tiles.Value{"disable"},
-		IngressCertificates: tiles.CertificateValue{[]tiles.CertificateConstruct{
-			{Certificate: tiles.Certificate{cfg.SslCertificate, cfg.SslPrivateKey},
+		AppsDomain:          tiles.Value{Value: cfg.AppsDomain},
+		SysDomain:           tiles.Value{Value: cfg.SysDomain},
+		SkipSSLVerification: tiles.BooleanValue{Value: true},
+		HAProxyForwardTLS:   tiles.Value{Value: "disable"},
+		IngressCertificates: tiles.CertificateValue{Value: []tiles.CertificateConstruct{
+			{Certificate: tiles.Certificate{PublicKey: cfg.SslCertificate, PrivateKey: cfg.SslPrivateKey},
 				Name: "Certificate",
 			},
 		},
 		},
-		CredhubEncryptionKey: tiles.EncryptionKeyValue{[]tiles.EncryptionKey{
+		CredhubEncryptionKey: tiles.EncryptionKeyValue{Value: []tiles.EncryptionKey{
 			{
 				Name:    cfg.CredhubKey.Name,
 				Key:     tiles.KeyStruct{Secret: cfg.CredhubKey.Key},
@@ -251,5 +251,8 @@ func (*Tile) Configure(envConfig *config.EnvConfig, cfg *config.Config, om *ops_
 	if err != nil {
 		return err
 	}
+
+	fmt.Println(string(resourcesBytes))
+
 	return om.ConfigureProduct(product.Name, string(networkBytes), string(propertiesBytes), string(resourcesBytes))
 }

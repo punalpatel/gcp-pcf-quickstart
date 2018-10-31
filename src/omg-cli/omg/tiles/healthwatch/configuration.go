@@ -20,7 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"omg-cli/config"
-	"omg-cli/omg/tiles"
+	"omg-cli/omg/tiles/tilestructs"
 	"omg-cli/ops_manager"
 )
 
@@ -29,8 +29,8 @@ const (
 )
 
 type Properties struct {
-	OpsManagerURL     tiles.Value `json:".properties.opsman.enable.url"`
-	BoshHealthCheckAZ tiles.Value `json:".healthwatch-forwarder.health_check_az"`
+	OpsManagerURL     tilestructs.Value `json:".properties.opsman.enable.url"`
+	BoshHealthCheckAZ tilestructs.Value `json:".healthwatch-forwarder.health_check_az"`
 }
 
 type Resources struct {
@@ -41,7 +41,7 @@ func (t *Tile) Configure(envConfig *config.EnvConfig, cfg *config.Config, om *op
 		return err
 	}
 
-	network := tiles.NetworkODBConfig(cfg.ServicesSubnetName, cfg, cfg.DynamicServicesSubnetName)
+	network := tilestructs.NetworkODBConfig(cfg.ServicesSubnetName, cfg, cfg.DynamicServicesSubnetName)
 
 	networkBytes, err := json.Marshal(&network)
 	if err != nil {
@@ -49,8 +49,8 @@ func (t *Tile) Configure(envConfig *config.EnvConfig, cfg *config.Config, om *op
 	}
 
 	properties := &Properties{
-		OpsManagerURL:     tiles.Value{fmt.Sprintf("https://opsman.%s", cfg.DnsSuffix)},
-		BoshHealthCheckAZ: tiles.Value{cfg.Zone1},
+		OpsManagerURL:     tilestructs.Value{fmt.Sprintf("https://opsman.%s", cfg.DnsSuffix)},
+		BoshHealthCheckAZ: tilestructs.Value{cfg.Zone1},
 	}
 
 	propertiesBytes, err := json.Marshal(&properties)

@@ -44,7 +44,7 @@ var smallRuntime = config.Tile{
 
 var product = config.OpsManagerMetadata{
 	"cf",
-	"2.3.1",
+	"2.3.2",
 }
 
 var stemcell = config.StemcellMetadata{

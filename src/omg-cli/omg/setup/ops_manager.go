@@ -28,6 +28,7 @@ import (
 	"os"
 	"path"
 	"time"
+	"path/filepath"
 )
 
 type OpsManager struct {
@@ -102,11 +103,14 @@ func (s *OpsManager) ensureProductReady(tile config.Tile) error {
 
 func (s *OpsManager) uploadProduct(tile config.PivnetMetadata) error {
 	file, err := s.tileCache.Open(tile)
+	if err != nil {
+		return fmt.Errorf("error reading tile cache: %v", err)
+	}
 
 	if file == nil {
-		s.logger.Printf("tile not found in cache, downloading")
-		file, err = s.pivnet.DownloadTile(tile)
-		defer os.Remove(file.Name())
+		s.logger.Printf("tile %s not found in cache %s, downloading", tile.Name, s.tileCache.Dir)
+		output := filepath.Join(s.tileCache.Dir, pivnet.FileName(tile))
+		file, err = s.pivnet.DownloadTile(tile, output)
 	}
 
 	if err != nil {
@@ -117,7 +121,8 @@ func (s *OpsManager) uploadProduct(tile config.PivnetMetadata) error {
 }
 
 func (s *OpsManager) uploadStemcell(tile config.StemcellMetadata) error {
-	file, err := s.pivnet.DownloadTile(tile.PivnetMetadata)
+	output := filepath.Join(s.tileCache.Dir, pivnet.StemcellFileName(tile))
+	file, err := s.pivnet.DownloadTile(tile.PivnetMetadata, output)
 	if err != nil {
 		return err
 	}

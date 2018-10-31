@@ -20,7 +20,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"omg-cli/config"
-	"omg-cli/omg/tiles"
+	tiles "omg-cli/omg/tiles/tilestructs"
 	"omg-cli/ops_manager"
 )
 

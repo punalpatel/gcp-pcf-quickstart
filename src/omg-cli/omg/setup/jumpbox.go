@@ -102,10 +102,10 @@ func (jb *Jumpbox) UploadDependencies() error {
 		local, dest string
 	}
 	files := []plan{
-		// Upload the omg-cli binary to be run remotely.
-		{rebuilt.Name(), packageName},
 		// Upload the jumpbox public SSH key for director-ssh cmd.
 		{filepath.Join(jb.envDir, "keys", "jumpbox_ssh.pub"), "keys/jumpbox_ssh.pub"},
+		// Upload the omg-cli binary to be run remotely.
+		{rebuilt.Name(), packageName},
 	}
 
 	for _, f := range config.ConfigFiles {

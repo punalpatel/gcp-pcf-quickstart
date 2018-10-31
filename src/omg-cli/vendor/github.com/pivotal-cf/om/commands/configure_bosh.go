@@ -9,6 +9,7 @@ import (
 	"github.com/google/go-querystring/query"
 	"github.com/pivotal-cf/jhanda"
 	"github.com/pivotal-cf/om/api"
+	"github.com/pivotal-cf/om/ui"
 )
 
 const (
@@ -24,10 +25,11 @@ const (
 )
 
 type ConfigureBosh struct {
-	boshService       boshFormService
-	diagnosticService diagnosticService
-	logger            logger
-	Options           struct {
+	boshService boshFormService
+	service     configureBoshService
+	logger      logger
+	loggerErr   logger
+	Options     struct {
 		IaaSConfiguration              string `short:"i"  long:"iaas-configuration"  description:"iaas specific JSON configuration for the bosh director"`
 		DirectorConfiguration          string `short:"d"  long:"director-configuration"  description:"director-specific JSON configuration for the bosh director"`
 		SecurityConfiguration          string `short:"s"  long:"security-configuration"  description:"security-specific JSON configuration for the bosh director"`
@@ -40,21 +42,30 @@ type ConfigureBosh struct {
 
 //go:generate counterfeiter -o ./fakes/bosh_form_service.go --fake-name BoshFormService . boshFormService
 type boshFormService interface {
-	GetForm(path string) (api.Form, error)
-	PostForm(api.PostFormInput) error
+	GetForm(path string) (ui.Form, error)
+	PostForm(ui.PostFormInput) error
 	AvailabilityZones() (map[string]string, error)
 	Networks() (map[string]string, error)
 }
 
-func NewConfigureBosh(bs boshFormService, ds diagnosticService, l logger) ConfigureBosh {
+//go:generate counterfeiter -o ./fakes/configure_bosh_service.go --fake-name ConfigureBoshService . configureBoshService
+type configureBoshService interface {
+	GetDiagnosticReport() (api.DiagnosticReport, error)
+}
+
+func NewConfigureBosh(bs boshFormService, service configureBoshService, l logger, e logger) ConfigureBosh {
 	return ConfigureBosh{
-		boshService:       bs,
-		diagnosticService: ds,
-		logger:            l,
+		boshService: bs,
+		service:     service,
+		logger:      l,
+		loggerErr:   e,
 	}
 }
 
 func (c ConfigureBosh) Execute(args []string) error {
+
+	c.loggerErr.Printf("**Warning** The `configure-bosh` command has been deprecated.\n\nPlease use the `configure-director` command instead")
+
 	if len(args) == 0 {
 		return errors.New("at least one configuration flag must be provided. Please see usage for more information.")
 	}
@@ -91,7 +102,7 @@ func (c ConfigureBosh) Execute(args []string) error {
 		}
 	}
 
-	report, err := c.diagnosticService.Report()
+	report, err := c.service.GetDiagnosticReport()
 	if err != nil {
 		return err
 	}
@@ -232,7 +243,7 @@ func (c ConfigureBosh) postForm(path string, initialConfig BoshConfiguration) er
 		return err // cannot be tested
 	}
 
-	err = c.boshService.PostForm(api.PostFormInput{Form: form, EncodedPayload: formValues.Encode()})
+	err = c.boshService.PostForm(ui.PostFormInput{Form: form, EncodedPayload: formValues.Encode()})
 	if err != nil {
 		return fmt.Errorf("tile failed to configure: %s", err)
 	}
@@ -282,7 +293,7 @@ func (c ConfigureBosh) configureNetworkForm(path string, configuration string, r
 		return err // cannot be tested
 	}
 
-	err = c.boshService.PostForm(api.PostFormInput{Form: form, EncodedPayload: formValues.Encode()})
+	err = c.boshService.PostForm(ui.PostFormInput{Form: form, EncodedPayload: formValues.Encode()})
 	if err != nil {
 		return fmt.Errorf("tile failed to configure: %s", err)
 	}
@@ -292,8 +303,8 @@ func (c ConfigureBosh) configureNetworkForm(path string, configuration string, r
 
 func (c ConfigureBosh) Usage() jhanda.Usage {
 	return jhanda.Usage{
-		Description:      "configures the bosh director that is deployed by the Ops Manager",
-		ShortDescription: "configures Ops Manager deployed bosh director",
+		Description:      "**DEPRECATED** configures the bosh director that is deployed by the Ops Manager",
+		ShortDescription: "**DEPRECATED** configures Ops Manager deployed bosh director",
 		Flags:            c.Options,
 	}
 }

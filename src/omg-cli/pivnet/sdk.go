@@ -71,8 +71,8 @@ func (s *Sdk) checkCredentials() error {
 // If an error is returned no os.File will be returned
 //
 // Caller is responsible for deleting the os.File
-func (s *Sdk) DownloadTile(tile config.PivnetMetadata) (file *os.File, err error) {
-	return s.DownloadTileToPath(tile, "")
+func (s *Sdk) DownloadTile(tile config.PivnetMetadata, path string) (file *os.File, err error) {
+	return s.DownloadTileToPath(tile, path)
 }
 
 // DownloadTileToPath is a version of DownloadTile that accepts a path specifying

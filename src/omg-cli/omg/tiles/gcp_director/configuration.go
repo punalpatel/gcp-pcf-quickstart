@@ -25,6 +25,8 @@ import (
 	"omg-cli/ops_manager"
 
 	"github.com/pivotal-cf/om/commands"
+	"github.com/pivotal-cf/om/api"
+	"omg-cli/omg/tiles/tilestructs"
 )
 
 const (
@@ -34,10 +36,10 @@ const (
 func (*Tile) Configure(envConfig *config.EnvConfig, cfg *config.Config, om *ops_manager.Sdk) error {
 	networks, networkAssignment := networkCfg(cfg)
 
-	return om.SetupBosh(gcp(cfg), director(cfg), avalibilityZones(cfg), networks, networkAssignment, resources(envConfig))
+	return om.SetupBosh(director(cfg), gcp(cfg), availabilityZones(cfg), networks, networkAssignment, resources(envConfig))
 }
 
-func buildNetwork(cfg *config.Config, name, cidrRange, gateway string, serviceNetwork bool) commands.NetworkConfiguration {
+func buildNetwork(cfg *config.Config, name, cidrRange, gateway string, serviceNetwork bool) api.NetworkConfigurationOutput {
 	// Reserve .1-.20
 	lowerIp, _, err := net.ParseCIDR(cidrRange)
 	lowerIp = lowerIp.To4()
@@ -48,9 +50,9 @@ func buildNetwork(cfg *config.Config, name, cidrRange, gateway string, serviceNe
 	copy(upperIp, lowerIp)
 	upperIp[3] = 20
 
-	return commands.NetworkConfiguration{
+	return api.NetworkConfigurationOutput{
 		Name: name,
-		Subnets: []commands.Subnet{
+		Subnets: []api.SubnetOutput{
 			{
 				IAASIdentifier:    fmt.Sprintf("%s/%s/%s", cfg.NetworkName, name, cfg.Region),
 				CIDR:              cidrRange,
@@ -63,10 +65,10 @@ func buildNetwork(cfg *config.Config, name, cidrRange, gateway string, serviceNe
 	}
 }
 
-func networkCfg(cfg *config.Config) (networks commands.NetworksConfiguration, networkAssignment commands.NetworkAssignment) {
-	networks = commands.NetworksConfiguration{
+func networkCfg(cfg *config.Config) (networks api.NetworksConfigurationOutput, networkAssignment tilestructs.Network) {
+	networks = api.NetworksConfigurationOutput{
 		ICMP: false,
-		Networks: []commands.NetworkConfiguration{
+		Networks: []api.NetworkConfigurationOutput{
 			buildNetwork(cfg, cfg.MgmtSubnetName, cfg.MgmtSubnetCIDR, cfg.MgmtSubnetGateway, false),
 			buildNetwork(cfg, cfg.ServicesSubnetName, cfg.ServicesSubnetCIDR, cfg.ServicesSubnetGateway, false),
 			buildNetwork(cfg, cfg.DynamicServicesSubnetName, cfg.DynamicServicesSubnetCIDR, cfg.DynamicServicesSubnetGateway, true),
@@ -74,9 +76,13 @@ func networkCfg(cfg *config.Config) (networks commands.NetworksConfiguration, ne
 		},
 	}
 
-	networkAssignment = commands.NetworkAssignment{
-		UserProvidedNetworkName: cfg.MgmtSubnetName,
-		UserProvidedAZName:      cfg.Zone1,
+	networkAssignment = tilestructs.Network{
+		Network: tilestructs.NetworkName{
+			Name: cfg.MgmtSubnetName,
+		},
+		SingletonAvalibilityZone: tilestructs.AvalibilityZone{
+			Name: cfg.Zone1,
+		},
 	}
 
 	return
@@ -96,6 +102,7 @@ func director(cfg *config.Config) (director commands.DirectorConfiguration) {
 			Password: cfg.OpsManagerSqlPassword,
 			Port:     &cfg.ExternalSqlPort,
 		},
+		BlobStoreType: "local",
 	}
 
 	return
@@ -141,12 +148,17 @@ func gcp(cfg *config.Config) commands.GCPIaaSConfiguration {
 	}
 }
 
-func avalibilityZones(cfg *config.Config) commands.AvailabilityZonesConfiguration {
-	return commands.AvailabilityZonesConfiguration{
-		AvailabilityZones: []commands.AvailabilityZone{
-			{Name: cfg.Zone1},
-			{Name: cfg.Zone2},
-			{Name: cfg.Zone3},
+func availabilityZones(cfg *config.Config) []*api.AZ {
+
+	return []*api.AZ{
+		{
+			Name: cfg.Zone1,
+		},
+		{
+			Name: cfg.Zone2,
+		},
+		{
+			Name: cfg.Zone3,
 		},
 	}
 }

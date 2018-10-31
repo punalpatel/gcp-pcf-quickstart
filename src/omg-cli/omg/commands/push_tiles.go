@@ -32,6 +32,7 @@ type PushTilesCommand struct {
 	logger       *log.Logger
 	envDir       string
 	tileCacheDir string
+	disableCacheHashCheck bool
 }
 
 const PushTilesName = "push-tiles"
@@ -40,6 +41,7 @@ func (cmd *PushTilesCommand) register(app *kingpin.Application) {
 	c := app.Command(PushTilesName, "Push desired tiles to a deployed Ops Manager").Action(cmd.run)
 	registerEnvConfigFlag(c, &cmd.envDir)
 	registerTileCacheFlag(c, &cmd.tileCacheDir)
+	c.Flag("disable-cache-hash-check", "disable tile cache sha256 hash check").Default("false").BoolVar(&cmd.disableCacheHashCheck)
 }
 
 func (cmd *PushTilesCommand) run(c *kingpin.ParseContext) error {
@@ -63,7 +65,11 @@ func (cmd *PushTilesCommand) run(c *kingpin.ParseContext) error {
 		return err
 	}
 
-	tileCache := &pivnet.TileCache{Dir: cmd.tileCacheDir}
+	tileCache, err := pivnet.NewTileCache(cmd.tileCacheDir, cmd.disableCacheHashCheck)
+	if err != nil {
+		return fmt.Errorf("creating tile cache: %v", err)
+	}
+
 	tiles := selectedTiles(cmd.logger, envCfg)
 	opsMan := setup.NewService(cfg, envCfg, omSdk, pivnetSdk, cmd.logger, tiles, tileCache)
 
