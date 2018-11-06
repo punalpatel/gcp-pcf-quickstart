@@ -94,7 +94,7 @@ func (is InstallationsService) Trigger(ignoreWarnings bool, deployProducts bool)
 
 	defer resp.Body.Close()
 
-	bodyBytes := ioutil.ReadAll(resp.Body)
+	bodyBytes, _ := ioutil.ReadAll(resp.Body)
 	fmt.Println(string(bodyBytes))
 
 	if err = ValidateStatusOK(resp); err != nil {
