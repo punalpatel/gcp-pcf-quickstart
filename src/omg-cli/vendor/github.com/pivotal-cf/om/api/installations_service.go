@@ -93,6 +93,9 @@ func (is InstallationsService) Trigger(ignoreWarnings bool, deployProducts bool)
 
 	defer resp.Body.Close()
 
+	bodyBytes := ioutil.ReadAll(resp.Body)
+	fmt.Println(string(bodyBytes))
+
 	if err = ValidateStatusOK(resp); err != nil {
 		return InstallationsServiceOutput{}, err
 	}
@@ -102,7 +105,7 @@ func (is InstallationsService) Trigger(ignoreWarnings bool, deployProducts bool)
 			ID int
 		}
 	}
-	err = json.NewDecoder(resp.Body).Decode(&installation)
+	err = json.Unmarshal(bodyBytes, &installation)
 	if err != nil {
 		return InstallationsServiceOutput{}, fmt.Errorf("failed to decode response: %s", err)
 	}
